@@ -105,10 +105,13 @@ def getStockData(stock):
             if 'Error Message' in response.text:
                 print(':Removed {} from list.'.format(symbol))
                 stock_list.remove(stock)
-                pass
+                continue
         except:
-            stock_list.remove(stock)
-            pass
+            try:
+                stock_list.remove(stock)
+                continue
+            except:
+                continue
         try:
             dummy = response.json()['Time Series (1min)']
         except Exception as exc:
@@ -170,6 +173,7 @@ def getStockData(stock):
             if os.path.exists('{}.xlsx'):
                 os.remove('{}.xlsx'.format(symbol))
             stock_list.remove(symbol)
+
 
 
 def neuralNetPredition(symbol):

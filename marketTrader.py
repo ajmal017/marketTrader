@@ -29,7 +29,9 @@ Make sure you have a config.py file in the local directory that contains an API 
 '''
 num_of_stocks = 5
 notify = True
-check_close = True
+check_close = False
+
+stock_list = list()
 
 
 def clean():
@@ -86,6 +88,7 @@ def getStockData(stock):
         stock_list.append(stock)
     stockDict = {}
     for symbol in stock_list:
+        stop = False
         if os.path.exists('{}.xlsx'.format(symbol)):
             os.remove('{}.xlsx'.format(symbol))
         time.sleep(3)
@@ -100,18 +103,12 @@ def getStockData(stock):
             'datatype': 'json' ,
             'apikey': config.API_KEY
         }
-        try:
-            response = requests.get('https://www.alphavantage.co/query?', params=data)
-            if 'Error Message' in response.text:
-                print(':Removed {} from list.'.format(symbol))
-                stock_list.remove(stock)
-                continue
-        except:
-            try:
-                stock_list.remove(stock)
-                continue
-            except:
-                continue
+        response = requests.get('https://www.alphavantage.co/query?', params=data)
+        if 'Error Message' in response.text:
+            print(':Error getting stock data for {}; skipping in list.'.format(symbol))
+            #stock_list.remove(symbol)
+            getStockData(stock_list[stock_list.index(symbol)+1:len(stock_list)-1])
+            break
         try:
             dummy = response.json()['Time Series (1min)']
         except Exception as exc:
@@ -178,7 +175,7 @@ def getStockData(stock):
 
 def neuralNetPredition(symbol):
     print(':Starting neural network training for {}...'.format(symbol))
-    wb = xw.Book('{}.xlsx'.format(symbol))
+    wb= xw.Book('{}.xlsx'.format(symbol))
     # gets value of maxRow
     RR2 = wb.sheets['stock data'].api.Cells.Find(What="*" ,
                                                  After=wb.sheets['stock data'].api.Cells(1 , 1) ,
@@ -206,9 +203,9 @@ def neuralNetPredition(symbol):
     clf = MLPRegressor(solver='lbfgs' , alpha=1e-5 , random_state=1)
     clf.fit(x_list , y_list)
     guess = clf.predict([wb.sheets['stock data'].range(cells).value])
-    print(':Model prediciton for {}: {}'.format(symbol, guess))
+    print(':Model prediction for {}: {}'.format(symbol, guess))
     with open('log.txt' , 'a') as aF:
-        aF.write(":{}'s machine learning data: guess={};\npredicitonX_value={};\nmaxRows={};\n\n".format(symbol, guess, wb.sheets['stock data'].range(cells).value), maxRow)
+        aF.write(":{}'s machine learning data: guess={};\npredictionX_value={};\nmaxRows={};\n\n".format(symbol, guess, wb.sheets['stock data'].range(cells).value, maxRow))
     prevClose = wb.sheets['stock data'].range('E{}'.format(row_to_predict)).value
     percentChange = ((guess-prevClose)/prevClose)*100
     wb.app.quit()
@@ -218,7 +215,7 @@ def neuralNetPredition(symbol):
 
 def activeTrader(symbol):
     global stock_list
-    global prediciton
+    global prediction
     print('[activeTrader]: Initializing stock {}'.format(symbol))
     investment = False
     investPrice = None
@@ -233,7 +230,7 @@ def activeTrader(symbol):
             if prediction[1] > 0.021:      # 0.021
                 print('[activeTrader]: Investing in {}; estimated gain is {}%; entry price is {}.'.format(symbol, prediction[1], cur_price))
                 with open('trade_log.txt', 'a') as w:
-                    w.write('Invested at {}. Predicitons: {};\n'.format(cur_price, prediciton))
+                    w.write('Invested at {}. Predictions: {};\n'.format(cur_price, prediction))
                 investPrice = cur_price
                 investment = True
             else:
@@ -245,13 +242,14 @@ def activeTrader(symbol):
                 with open('trade_log.txt', 'a') as w:
                     w.write('Sold at {}. Original investment: {};\n'.format(cur_price, investPrice))
                 if notify is True:
-                    alert('{}: Sold at {}/original investment: {}; Predicitons: {};'.format(symbol, cur_price, investPrice, prediction))
+                    alert('{}: Sold at {}/original investment: {}; Predictions: {};'.format(symbol, cur_price, investPrice, prediction))
                 investment = False
             else:
                 print('[activeTrader]: Keeping investment; estimated gain for {} is {}%; current price is {};'.format(symbol, prediction[1], cur_price))
 
 
 def main():
+    global stock_list
     action = input('1. Get top {} stocks\n2. Get stock data\n3. Train and run neural network prediction\n4. Run autonomous trade bot\n? '.format(num_of_stocks))
     if action.lower() == 'clean':
         clean()
@@ -259,6 +257,8 @@ def main():
         getTopStocks()
     elif action == '2':
         getStockData('All')
+        ###
+        print(stock_list)
     elif action == '3':
         symbol = input(':Run neural network on what stock? Type in symbol or leave blank to run stock_list.\n? ').upper()
         if symbol == '':
@@ -289,7 +289,7 @@ def main():
                 preferredStock[0] = resultSet[0]
                 preferredStock[1] = resultSet[2]
         if preferredStock[0] != 'None':
-            print(':Neural Network preferred stock: {}; Estimated Gain: {}'.format(preferredStock[0]), preferredStock[1])
+            print(':Neural Network preferred stock: {}; Estimated Gain: {}'.format(preferredStock[0], preferredStock[1]))
             print(': Starting Active Trader with preferred stock {}...'.format([preferredStock[0]]))
             stock_list.remove(preferredStock[0])
             clean()

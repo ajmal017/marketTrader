@@ -1,4 +1,4 @@
-# marketTrader.py v1.1
+# marketTrader.py v1.2
 # WIP; still using paper trades. Also, I apologise for some sloppiness down in the code.
 import config
 import json
@@ -27,10 +27,9 @@ If notify is True, it will notify you when a trade is made;
 If check_close is true, the program will close itself if the market is closed(if False, may not work correctly!);
 Make sure you have a config.py file in the local directory that contains an API key(ex in README)
 '''
-num_of_stocks = 5
-notify = True
-check_close = False
-
+num_of_stocks = 10
+notify = False
+check_close = True
 stock_list = list()
 
 
@@ -88,7 +87,6 @@ def getStockData(stock):
         stock_list.append(stock)
     stockDict = {}
     for symbol in stock_list:
-        stop = False
         if os.path.exists('{}.xlsx'.format(symbol)):
             os.remove('{}.xlsx'.format(symbol))
         time.sleep(3)
@@ -107,7 +105,7 @@ def getStockData(stock):
         if 'Error Message' in response.text:
             print(':Error getting stock data for {}; skipping in list.'.format(symbol))
             #stock_list.remove(symbol)
-            getStockData(stock_list[stock_list.index(symbol)+1:len(stock_list)-1])
+            getStockData(stock_list[stock_list.index(symbol)+1:len(stock_list)])
             break
         try:
             dummy = response.json()['Time Series (1min)']
@@ -158,10 +156,11 @@ def getStockData(stock):
         wb = xw.Book('{}.xlsx'.format(symbol))
         percentChange = wb.sheets['stock data'].range('K{}'.format(maxRow)).value
         totalAvg = wb.sheets['stock data'].range('I{}'.format(maxRow)).value
+        wb.save()
         wb.app.quit()
         stockDict[symbol] = '[{}, {}]'.format(percentChange, totalAvg)
-        with open("stockData.json" , "a") as append:
-            json.dump(stockDict , append)
+        #with open("stockData.json" , "a") as append:
+        #    json.dump(stockDict , append)
         # displays formula results
         if percentChange != None:
             print(':{} total change is {}%'.format(symbol, str(percentChange)[0:str(percentChange).find(".") + 2]))
@@ -175,16 +174,14 @@ def getStockData(stock):
 
 def neuralNetPredition(symbol):
     print(':Starting neural network training for {}...'.format(symbol))
-    wb= xw.Book('{}.xlsx'.format(symbol))
-    # gets value of maxRow
-    RR2 = wb.sheets['stock data'].api.Cells.Find(What="*" ,
-                                                 After=wb.sheets['stock data'].api.Cells(1 , 1) ,
-                                                 LookAt=xlwings.constants.LookAt.xlPart ,
-                                                 LookIn=xlwings.constants.FindLookIn.xlFormulas ,
-                                                 SearchOrder=xlwings.constants.SearchOrder.xlByRows ,
-                                                 SearchDirection=xlwings.constants.SearchDirection.xlPrevious ,
-                                                 MatchCase=False)
-    maxRow = RR2.Row
+    try:
+        wb = xw.Book('{}.xlsx'.format(symbol))
+    except:
+        getStockData([symbol])
+        wb = xw.Book('{}.xlsx'.format(symbol))
+    # gets value of maxRow'
+    #wb.sheets['stock_data'].api.cells.F
+    maxRow = wb.sheets['stock data'].range('A' + str(wb.sheets[0].cells.last_cell.row)).end('up').row
     if maxRow << 500:
         pass
     x_list , y_list = [] , []
@@ -198,16 +195,15 @@ def neuralNetPredition(symbol):
         x_list.append(values)
         y_list.append(y)
     # runs neural network model
-    row_to_predict = row-1   #2
-    cells = 'B{}:E{}'.format(row_to_predict, row_to_predict)
+    row_to_predict = 2   #2
     clf = MLPRegressor(solver='lbfgs' , alpha=1e-5 , random_state=1)
     clf.fit(x_list , y_list)
-    guess = clf.predict([wb.sheets['stock data'].range(cells).value])
+    #print('[Debugger]: predictionX: {}\n[Debugger]:row_to_predict: {}'.format(wb.sheets['stock data'].range('B{}:E{}'.format(row_to_predict, row_to_predict)).value, row_to_predict))
+    guess = clf.predict([wb.sheets['stock data'].range('B2:E2').value])
     print(':Model prediction for {}: {}'.format(symbol, guess))
-    with open('log.txt' , 'a') as aF:
-        aF.write(":{}'s machine learning data: guess={};\npredictionX_value={};\nmaxRows={};\n\n".format(symbol, guess, wb.sheets['stock data'].range(cells).value, maxRow))
     prevClose = wb.sheets['stock data'].range('E{}'.format(row_to_predict)).value
     percentChange = ((guess-prevClose)/prevClose)*100
+    wb.save()
     wb.app.quit()
     resultList = [float(guess), float(percentChange), prevClose]
     return resultList
@@ -257,7 +253,6 @@ def main():
         getTopStocks()
     elif action == '2':
         getStockData('All')
-        ###
         print(stock_list)
     elif action == '3':
         symbol = input(':Run neural network on what stock? Type in symbol or leave blank to run stock_list.\n? ').upper()
@@ -284,7 +279,7 @@ def main():
             stockPredictions.append([symbol, results[0], results[1], results[2]])
         preferredStock = ['None', 0]
         for resultSet in stockPredictions:
-            print('[Debug]: {} > {}'.format(resultSet[2], preferredStock[1]))
+            #print('[Debuger]: {} > {}'.format(resultSet[2], preferredStock[1]))
             if resultSet[2] > preferredStock[1]:
                 preferredStock[0] = resultSet[0]
                 preferredStock[1] = resultSet[2]
@@ -302,4 +297,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

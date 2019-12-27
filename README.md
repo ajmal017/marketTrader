@@ -1,6 +1,6 @@
 # This repository is a work in progress!
 I'm testing the program with paper trades right now trying to improve the machine learning and data limits within the code. I provided some test results at the bottom of this readme in the tests section. I'm hoping to have the neural network live trading out of the box. I'm thinking it could be finished by the end of January 2020. Thanks!
-# marketTrader v1.0
+# marketTrader v1.2
 A python script that will: gather and pull data from top gaining stocks, calculate which stock has the highest chance of profit, and using machine learning to buy and sell throughout a typical market day. (WIP)
 
 This is not a module. Clone this repository to run it.
@@ -61,6 +61,10 @@ it is currently only using market data to paper trade.*
 This section is specifically detailing the automated trade bot. 
 
 The bot starts by using Yahoo! Finance to get the top 10 stocks from the top gainers page. It then gathers stock data on each of the stocks in the list. It runs all of the stocks through the neural network and uses its predictions to determine which stock has the most potential at that time(it uses this stock for the rest of the program despite changes in other stock's data). It then will create a loop that: gathers stock data, runs neural network, and calculates if it should invest or sell. It uses the predicitons percent change to determine if it should invest or sell. Currently, if the percentage is greater than positive 2.1% predicted change it will invest; if the percentage is less than positive 1.15% predicted gains, it will sell. The program will not reinvest if it already has made an investment until it sells that investment. Likewise, it will not sell an investment that hasn't been made yet.
+
+## A note on accuracy:
+I've shared this project with many online discussion groups on Discord and Reddit. I recieved a lot of criticism about the variables I use to predict the future price of a stock. I am, however, using minute-by-minute data to make my calculations. I believe the data I am using is enough to make minute-by-minute predictions based on previous trends in the last 1000 minutes of data because I am using top gainers from Yahoo! Finance. The stocks this program selects already have an upward trend; this program just uses previous data to figure out when the optimal time is to invest and sell.
+
 # Tests
 This all seems to work in theory, but does it actually work?
 

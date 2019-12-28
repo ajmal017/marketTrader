@@ -8,19 +8,6 @@ This is not a module. Clone this repository to run it.
 Install all required modules with
 ```pip install -r requirements.txt```
 
-<<<<<<< HEAD
-=======
-Required modules are:
-- beautifulsoup4==4.8.1
-- holidays==0.9.12
-- sklearn==0.0
-- PyAutoGUI==0.9.38
-- pytz==2018.7
-- XlsxWriter==1.1.8
-- xlwings==0.16.4
-- yahoo-fin==0.8.4
-
->>>>>>> 44a85bdb56f5769a6889e0681bc14bb89389c3dd
 The program does use xlwings, which opens Excel files(.xlsx) while they are being read. If you don't have Microsoft Excel installed or your subscription has expired, **the program may not work**!
 ## AlphaVantage
 This repository uses AlphaVantage's API to request data lists on stocks. All you need for this program to work is a free API key from their site, [(https://www.alphavantage.co/)].

@@ -26,7 +26,7 @@ If check_close is true, the program will close itself if the market is closed(if
 
 Make sure you have a config.py file in the local directory that contains an API key(ex in README)
 '''
-num_of_stocks = 15      # Default: 10
+num_of_stocks = 5      # Default: 10
 check_close = True      # Default: True
 url = 'https://finance.yahoo.com/screener/predefined/day_gainers'   # Default: 'https://finance.yahoo.com/screener/predefined/day_gainers'
 stock_list = list()
@@ -76,15 +76,14 @@ def getTopStocks():
 def getStockData(stock):
     global stock_list
     if afterHours() is True and check_close is True:
-        print(':The market is closed...')
+        # print(':The market is closed...')
         return False
     if stock == 'All':
         stock_list = stock_list
     elif type(stock) is list:
         stock_list = stock
     else:
-        stock_list = []
-        stock_list.append(stock)
+        stock_list = [stock]
     stockDict = {}
     for symbol in stock_list:
         if os.path.exists('{}.xlsx'.format(symbol)):
@@ -173,16 +172,14 @@ def getStockData(stock):
             stock_list.remove(symbol)
 
 
-
 def neuralNetPredition(symbol):
     print(':Starting neural network training for {}...'.format(symbol))
     try:
         wb = xw.Book('{}.xlsx'.format(symbol))
     except:
         getStockData([symbol])
-        wb = xw.Book('{}.xlsx'.format(symbol))
+        wb = xw.Book('{}.xlsx'.format(symbol[0]))
     # gets value of maxRow'
-    #wb.sheets['stock_data'].api.cells.F
     maxRow = wb.sheets['stock data'].range('A' + str(wb.sheets[0].cells.last_cell.row)).end('up').row
     if maxRow << 500:
         wb.app.quit()
@@ -211,7 +208,7 @@ def neuralNetPredition(symbol):
     row_to_predict = 2   #2
     clf = MLPRegressor(solver='lbfgs' , alpha=1e-5 , random_state=1)
     clf.fit(x_list , y_list)
-    #print('[Debugger]: predictionX: {}\n[Debugger]:row_to_predict: {}'.format(wb.sheets['stock data'].range('B{}:E{}'.format(row_to_predict, row_to_predict)).value, row_to_predict))
+    # print('[Debugger]: predictionX: {}\n[Debugger]:row_to_predict: {}'.format(wb.sheets['stock data'].range('B{}:E{}'.format(row_to_predict, row_to_predict)).value, row_to_predict))
     guess = clf.predict([wb.sheets['stock data'].range('B2:E2').value])
     print(':Model prediction for {}: {}'.format(symbol, guess))
     prevClose = wb.sheets['stock data'].range('E{}'.format(row_to_predict)).value
@@ -234,7 +231,7 @@ def activeTrader(symbol):
             exit()
         prediction = neuralNetPredition(symbol)
         cur_price = si.get_live_price(symbol)
-        #should i invest
+        # should i invest
         if investment is False:
             if prediction[1] > 0.021:      # 0.021
                 print('[activeTrader]: Investing in {}; estimated gain is {}%; entry price is {}.'.format(symbol, prediction[1], cur_price))
@@ -308,7 +305,6 @@ def main():
     elif action == 'TEST':
         getStockData(['CMCL'])
     main()
-
 
 
 if __name__ == '__main__':

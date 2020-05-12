@@ -67,6 +67,6 @@ Sold at 16.139999389648438. Predicitons: [16.126069142303155, -0.024369855529099
 Invested at 16.149999618530273. Predicitons: [16.227193222959606, 0.10606553337202489, 16.21];
 Sold at 16.190000534057617. Predicitons: [16.168246129109814, -0.010846449537337132, 16.17];
 ```
-*Note: In the predicitons list, the first number is the predicted next open, percent change, and the last value is the current price.*
+*Note: In the predicitons list, the first number is the predicted next open, percent change, and the last value is the previous closing price.*
 
-So far, the model and calculations are doing reasonably well; they are turning a profit and are doing okay at predicitong trends. I'll keep you posted
+So far, the model and calculations are doing reasonably well; they are turning a profit and are doing okay at predicting trends. I'll keep you posted.

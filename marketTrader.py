@@ -1,13 +1,12 @@
-# marketTrader.py v1.2
-# WIP; still using paper trades. Also, I apologise for some sloppiness down in the code.
+# marketTrader.py v1.3
+# WIP; still using paper trades. Also, I apologise for some sloppiness down in the code and feel free to fork my repo.
+# https://github.com/jacksonhorton
 import config
-import json
 import os
 import requests
 import time
 import xlsxwriter
 import xlwings as xw
-import xlwings.constants
 from bs4 import BeautifulSoup
 from datetime import datetime, time as Time
 from holidays import US as holidaysUS
@@ -18,17 +17,19 @@ from sys import exit
 from yahoo_fin import stock_info as si
 
 
-
 '''
 Settings for the Program;
 num_of_stocks determines how many stocks will be searched for;
-If check_close is true, the program will close itself if the market is closed(if False, may not work correctly!);
+If check_close is true, the program will close itself if the stock market is closed(if False, may not work correctly!);
+url is used to "filter" the type of stocks you want to look through. There are many categories at finance.yahoo.com and
+you can replace the default with any of them;
 
-Make sure you have a config.py file in the local directory that contains an API key(ex in README)
+Make sure you have a config.py file in the local directory that contains an API key(ex in README.md)
 '''
-num_of_stocks = 5      # Default: 10
+num_of_stocks = 5      # Default: 5
 check_close = True      # Default: True
-url = 'https://finance.yahoo.com/screener/predefined/day_gainers'   # Default: 'https://finance.yahoo.com/screener/predefined/day_gainers'
+url = 'https://finance.yahoo.com/screener/predefined/day_gainers'
+# Default: 'https://finance.yahoo.com/screener/predefined/day_gainers'
 stock_list = list()
 
 
@@ -45,8 +46,8 @@ def afterHours(now=None):
     us_holidays = holidaysUS()
     if not now:
         now = datetime.now(tz)
-    openTime = Time(hour=9 , minute=30 , second=0)
-    closeTime = Time(hour=16 , minute=0 , second=0)
+    openTime = Time(hour=9, minute=30, second=0)
+    closeTime = Time(hour=16, minute=0, second=0)
     # If a holiday
     if now.strftime('%Y-%m-%d') in us_holidays:
         return True
@@ -58,18 +59,19 @@ def afterHours(now=None):
         return True
     return False
 
+
 def getTopStocks():
     global stock_list
     global url
     data = requests.get(url)
     if data.status_code != 200:
         print('Error! Status code was {}.'.format(data.status_code))
-    html_data = BeautifulSoup(data.content , 'html.parser')
+    html_data = BeautifulSoup(data.content, 'html.parser')
     temp = list(html_data.children)[1]
     temp = list(temp.children)[1]
     temp = list(temp.children)[2]
     html = str(list(temp.children)[0])
-    stock_list = html[html.find('"pageCategory":"YFINANCE:') + 25:html.find('","fallbackCategory":')].split(',')[0:num_of_stocks]   #list indexed starts with meta data object, so add 1 to index because index[0] is removed
+    stock_list = html[html.find('"pageCategory":"YFINANCE:') + 25:html.find('","fallbackCategory":')].split(',')[0:num_of_stocks]   # list indexed starts with meta data object, so add 1 to index because index[0] is removed
     print(':Top {} stocks: {}.'.format(num_of_stocks, stock_list))
 
 
@@ -122,36 +124,36 @@ def getStockData(stock):
         stock_finances = []
         workbook = xlsxwriter.Workbook('{}.xlsx'.format(symbol))
         worksheet = workbook.add_worksheet('stock data')
-        worksheet.write(0 , 1 , "open")
-        worksheet.write(0 , 2 , 'high')
-        worksheet.write(0 , 3 , 'low')
-        worksheet.write(0 , 4 , 'close')
-        worksheet.write(0 , 5 , 'volume')
+        worksheet.write(0, 1, "open")
+        worksheet.write(0, 2, 'high')
+        worksheet.write(0, 3, 'low')
+        worksheet.write(0, 4, 'close')
+        worksheet.write(0, 5, 'volume')
         d_count = 1
         for day in data.keys():
             stock_data = data[day]
             stock_finances.append(stock_data)
-            worksheet.write(d_count , 0 , str(day))
-            worksheet.write(d_count , 1 , float(stock_data['1. open']))
-            worksheet.write(d_count , 2 , float(stock_data['2. high']))
-            worksheet.write(d_count , 3 , float(stock_data['3. low']))
-            worksheet.write(d_count , 4 , float(stock_data['4. close']))
-            worksheet.write(d_count , 5 , float(stock_data['5. volume']))
+            worksheet.write(d_count, 0, str(day))
+            worksheet.write(d_count, 1, float(stock_data['1. open']))
+            worksheet.write(d_count, 2, float(stock_data['2. high']))
+            worksheet.write(d_count, 3, float(stock_data['3. low']))
+            worksheet.write(d_count, 4, float(stock_data['4. close']))
+            worksheet.write(d_count, 5, float(stock_data['5. volume']))
             d_count += 1
         # insert formulas
-        i , maxRow = 1 , worksheet.dim_rowmax + 1
+        i, maxRow = 1, worksheet.dim_rowmax + 1
         num_format = workbook.add_format({'num_format': '0.00;0.00'})
         percent_format = workbook.add_format({'num_format': '0.0000%'})
         # avg per day
-        worksheet.write(0 , 7 , 'Day Avg.')
+        worksheet.write(0, 7, 'Day Avg.')
         while i < maxRow:
-            worksheet.write(i , 7 , '=(B{}+E{})/2'.format(i+1, i+1) , num_format)
+            worksheet.write(i, 7, '=(B{}+E{})/2'.format(i+1, i+1), num_format)
             i += 1
-        worksheet.write(maxRow - 2 , 8 , 'Avg(Total)')
-        worksheet.write(maxRow - 1 , 8 , '=AVERAGE(H2:H{})'.format(maxRow) , num_format)
+        worksheet.write(maxRow - 2, 8, 'Avg(Total)')
+        worksheet.write(maxRow - 1, 8, '=AVERAGE(H2:H{})'.format(maxRow), num_format)
         # total percent change
-        worksheet.write(maxRow - 2 , 10 , 'Total %change')
-        worksheet.write(maxRow - 1 , 10 , '=((E2-B101)/B101)*100', num_format)
+        worksheet.write(maxRow - 2, 10, 'Total %change')
+        worksheet.write(maxRow - 1, 10, '=((E2-B101)/B101)*100', num_format)
         workbook.close()
         # gets formula results to compile a dict
         wb = xw.Book('{}.xlsx'.format(symbol))
@@ -160,10 +162,8 @@ def getStockData(stock):
         wb.save()
         wb.app.quit()
         stockDict[symbol] = '[{}, {}]'.format(percentChange, totalAvg)
-        #with open("stockData.json" , "a") as append:
-        #    json.dump(stockDict , append)
         # displays formula results
-        if percentChange != None:
+        if percentChange is not None:
             print(':{} total change is {}%'.format(symbol, str(percentChange)[0:str(percentChange).find(".") + 2]))
         else:
             print(':{} encountered an error during parsing... Removing from list.'.format(symbol))
@@ -172,7 +172,7 @@ def getStockData(stock):
             stock_list.remove(symbol)
 
 
-def neuralNetPredition(symbol):
+def neuralNetPrediction(symbol):
     print(':Starting neural network training for {}...'.format(symbol))
     try:
         wb = xw.Book('{}.xlsx'.format(symbol))
@@ -184,8 +184,8 @@ def neuralNetPredition(symbol):
     if maxRow << 500:
         wb.app.quit()
         pass
-    x_list , y_list = [] , []
-    row = 3 #default is 3; you can increase for testing
+    x_list, y_list = [], []
+    row = 3     # default is 3; you can increase for testing
     try:
         list = wb.sheets['stock data'].range('B{}:E{}'.format(row, row)).value
     except:
@@ -196,8 +196,7 @@ def neuralNetPredition(symbol):
         except:
             wb = xw.Book('{}.xlsx'.format(symbol))
         time.sleep(5)
-        list = wb.sheets['stock data'].range('B{}:E{}'.format(row, row)).value
-    cellRange = range(row , maxRow)
+    cellRange = range(row, maxRow)
     # creates x and y data sets
     for row in cellRange:
         y = wb.sheets['stock data'].range('E{}'.format(row - 1)).value
@@ -205,9 +204,9 @@ def neuralNetPredition(symbol):
         x_list.append(values)
         y_list.append(y)
     # runs neural network model
-    row_to_predict = 2   #2
-    clf = MLPRegressor(solver='lbfgs' , alpha=1e-5 , random_state=1)
-    clf.fit(x_list , y_list)
+    row_to_predict = 2   # Default: 2
+    clf = MLPRegressor(solver='lbfgs', alpha=1e-5, random_state=1)
+    clf.fit(x_list, y_list)
     # print('[Debugger]: predictionX: {}\n[Debugger]:row_to_predict: {}'.format(wb.sheets['stock data'].range('B{}:E{}'.format(row_to_predict, row_to_predict)).value, row_to_predict))
     guess = clf.predict([wb.sheets['stock data'].range('B2:E2').value])
     print(':Model prediction for {}: {}'.format(symbol, guess))
@@ -229,7 +228,7 @@ def activeTrader(symbol):
         if getStockData([symbol]) is False and check_close is True:
             print(':The market is closed...')
             exit()
-        prediction = neuralNetPredition(symbol)
+        prediction = neuralNetPrediction(symbol)
         cur_price = si.get_live_price(symbol)
         # should i invest
         if investment is False:
@@ -239,15 +238,15 @@ def activeTrader(symbol):
                     w = open(r'trade_log.txt', 'a')
                     w.write('Invested at {}. Predictions: {};\n'.format(cur_price, prediction))
                     w.close()
-                except:
+                except Exception as exc:
                     print(':Error! Unable to write to trade_log.txt. Continuing...')
                 investPrice = cur_price
                 investment = True
             else:
                 print('[activeTrader]: Not investing in {}; estimated change is {}%; current price is {}.'.format(symbol, prediction[1], cur_price))
-        #should i sell?
+        # should i sell?
         elif investment is True:
-            if prediction[1] < 0.0115:       #0.0115
+            if prediction[1] < 0.0115:       # Default: 0.0115
                 print('[activeTrader]: Selling {}; estimated change is {}%; exit price is {}.'.format(symbol, prediction[1], cur_price))
                 with open('trade_log.txt', 'a') as w:
                     w.write('Sold at {}. Original investment: {};\n'.format(cur_price, investPrice))
@@ -271,14 +270,14 @@ def main():
         if symbol == '':
             if len(stock_list) != 0:
                 for symbol in stock_list:
-                    neuralNetPredition(symbol)
+                    neuralNetPrediction(symbol)
             else:
                 getTopStocks()
                 for symbol in stock_list:
-                    neuralNetPredition(symbol)
+                    neuralNetPrediction(symbol)
         else:
             getStockData(symbol)
-            neuralNetPredition(symbol)
+            neuralNetPrediction(symbol)
     elif action == '4':
         print(':Refreshing stock_list...')
         getTopStocks()
@@ -286,17 +285,17 @@ def main():
             getStockData(stock)
         stockPredictions = []
         for symbol in stock_list:
-            results = neuralNetPredition(symbol)
+            results = neuralNetPrediction(symbol)
             stockPredictions.append([symbol, results[0], results[1], results[2]])
         preferredStock = ['None', 0]
         for resultSet in stockPredictions:
-            #print('[Debuger]: {} > {}'.format(resultSet[2], preferredStock[1]))
+            # print('[Debugger]: {} > {}'.format(resultSet[2], preferredStock[1]))
             if resultSet[2] > preferredStock[1]:
                 preferredStock[0] = resultSet[0]
                 preferredStock[1] = resultSet[2]
         if preferredStock[0] != 'None':
             print(':Neural Network preferred stock: {}; Estimated Gain: {}'.format(preferredStock[0], preferredStock[1]))
-            print(': Starting Active Trader with preferred stock {}...'.format([preferredStock[0]]))
+            print(':Starting Active Trader with preferred stock {}...'.format([preferredStock[0]]))
             stock_list.remove(preferredStock[0])
             clean()
             activeTrader(preferredStock[0])
@@ -308,4 +307,8 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    if afterHours() is True and check_close is True:
+        print(':Market closed.')
+        quit()
+    else:
+        main()

@@ -1,4 +1,4 @@
-# marketTrader.py v1.3
+# marketTrader.py v1.4
 # WIP; still using paper trades. Also, I apologise for some sloppiness down in the code and feel free to fork my repo.
 # https://github.com/jacksonhorton
 import config
@@ -63,6 +63,7 @@ def afterHours(now=None):
 def getTopStocks():
     global stock_list
     global url
+    # Gets the top 30 stock identifiers
     data = requests.get(url)
     if data.status_code != 200:
         print('Error! Status code was {}.'.format(data.status_code))
@@ -71,7 +72,18 @@ def getTopStocks():
     temp = list(temp.children)[1]
     temp = list(temp.children)[2]
     html = str(list(temp.children)[0])
-    stock_list = html[html.find('"pageCategory":"YFINANCE:') + 25:html.find('","fallbackCategory":')].split(',')[0:num_of_stocks]   # list indexed starts with meta data object, so add 1 to index because index[0] is removed
+    stock_list = html[html.find('"pageCategory":"YFINANCE:') + 25:html.find('","fallbackCategory":')].split(',')
+    # Removes any identifiers with a fifth letter(which won't work with our program)
+    remove_list = []
+    for id in stock_list:
+        if len(id) > 4:
+            if len(stock_list) > num_of_stocks:
+                # print(':Removing {} from stock_list because it has a fifth-letter identifier.'.format(id))
+                remove_list.append(id)
+    for i in range(len(remove_list)):
+        stock_list.remove(remove_list[i])
+    stock_list = stock_list[0:num_of_stocks]
+    #stock_list = html[html.find('"pageCategory":"YFINANCE:') + 25:html.find('","fallbackCategory":')].split(',')[0:num_of_stocks]   # list indexed starts with meta data object, so add 1 to index because index[0] is removed
     print(':Top {} stocks: {}.'.format(num_of_stocks, stock_list))
 
 
@@ -212,6 +224,7 @@ def neuralNetPrediction(symbol):
     print(':Model prediction for {}: {}'.format(symbol, guess))
     prevClose = wb.sheets['stock data'].range('E{}'.format(row_to_predict)).value
     percentChange = ((guess-prevClose)/prevClose)*100
+    print(f'percentChange: {percentChange}')
     wb.save()
     wb.app.quit()
     resultList = [float(guess), float(percentChange), prevClose]
@@ -222,37 +235,41 @@ def activeTrader(symbol):
     global stock_list
     global prediction
     print('[activeTrader]: Initializing stock {}'.format(symbol))
+    with open('trade_log.txt', 'a') as w:
+        w.write(f'[activeTrader]: Initializing stock {symbol}.\n')
     investment = False
     investPrice = None
+    last_est_change = None  # Used to make sure the .xlsx files are updating
     while True:
         if getStockData([symbol]) is False and check_close is True:
             print(':The market is closed...')
             exit()
         prediction = neuralNetPrediction(symbol)
         cur_price = si.get_live_price(symbol)
-        # should i invest
-        if investment is False:
-            if prediction[1] > 0.021:      # 0.021
-                print('[activeTrader]: Investing in {}; estimated gain is {}%; entry price is {}.'.format(symbol, prediction[1], cur_price))
-                try:
-                    w = open(r'trade_log.txt', 'a')
-                    w.write('Invested at {}. Predictions: {};\n'.format(cur_price, prediction))
-                    w.close()
-                except Exception as exc:
-                    print(':Error! Unable to write to trade_log.txt. Continuing...')
-                investPrice = cur_price
-                investment = True
-            else:
-                print('[activeTrader]: Not investing in {}; estimated change is {}%; current price is {}.'.format(symbol, prediction[1], cur_price))
-        # should i sell?
-        elif investment is True:
-            if prediction[1] < 0.0115:       # Default: 0.0115
-                print('[activeTrader]: Selling {}; estimated change is {}%; exit price is {}.'.format(symbol, prediction[1], cur_price))
-                with open('trade_log.txt', 'a') as w:
-                    w.write('Sold at {}. Original investment: {};\n'.format(cur_price, investPrice))
-                investment = False
-            else:
-                print('[activeTrader]: Keeping investment; estimated gain for {} is {}%; current price is {};'.format(symbol, prediction[1], cur_price))
+        if prediction[1] != last_est_change and last_est_change is not None:
+            # should i invest
+            if investment is False:
+                if prediction[1] > 2.10:      # Default: 2.10
+                    print('[activeTrader]: Investing in {}; estimated gain is {}%; entry price is {}.'.format(symbol, prediction[1], cur_price))
+                    try:
+                        with open('trade_log.txt' , 'a') as w:
+                            w.write('Invested at {}. Predictions: {};\n'.format(cur_price, prediction))
+                    except Exception as exc:
+                        print(':Error! Unable to write to trade_log.txt. Continuing...')
+                    investPrice = cur_price
+                    investment = True
+                else:
+                    print('[activeTrader]: Not investing in {}; estimated change is {}%; current price is {}.'.format(symbol, prediction[1], cur_price))
+            # should i sell?
+            elif investment is True:
+                if prediction[1] < 0.85:       # Default: 1.15
+                    print('[activeTrader]: Selling {}; estimated change is {}%; exit price is {}.'.format(symbol, prediction[1], cur_price))
+                    with open('trade_log.txt', 'a') as w:
+                        w.write('Sold at {}. Original investment: {};\n'.format(cur_price, investPrice))
+                    investment = False
+                else:
+                    print('[activeTrader]: Keeping investment; estimated gain for {} is {}%; current price is {};'.format(symbol, prediction[1], cur_price))
+        last_est_change = prediction[1]
 
 
 def main():

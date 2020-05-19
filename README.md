@@ -1,6 +1,6 @@
 # This repository is a work in progress!
 I'm testing the program with paper trades right now trying to improve the machine learning and data limits within the code. I provided some test results at the bottom of this readme in the tests section. I'm hoping to have the neural network live trading out of the box. I'm thinking it could be finished by ~the end of January 2020.~ *I'm putting this project on hold for a little bit. Sorry for any inconvenience...* Thanks!
-# marketTrader v1.3
+# marketTrader v1.4
 A python script that will: gather and pull data from top gaining stocks, calculate which stock has the highest chance of profit, and using machine learning to buy and sell throughout a typical market day. (WIP)
 
 This is not a module. Clone this repository to run it.
